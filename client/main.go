@@ -42,14 +42,14 @@ func getOrGenerateKey() (wgtypes.Key, error) {
 
 func setupWireGuardInterface() error {
 	link, err := netlink.LinkByName("wg0")
-	if err != nil {
-		wgLink := &netlink.GenericLink{LinkAttrs: netlink.LinkAttrs{Name: "wg0"}, LinkType: "wireguard"}
-		if err := netlink.LinkAdd(wgLink); err != nil {
-			return fmt.Errorf("failed to add wg0 interface: %w", err)
-		}
-		link = wgLink
+	if err == nil {
+		netlink.LinkDel(link) // Guarantee clean slate
 	}
-	return netlink.LinkSetUp(link)
+	wgLink := &netlink.GenericLink{LinkAttrs: netlink.LinkAttrs{Name: "wg0"}, LinkType: "wireguard"}
+	if err := netlink.LinkAdd(wgLink); err != nil {
+		return fmt.Errorf("failed to add wg0 interface: %w", err)
+	}
+	return netlink.LinkSetUp(wgLink)
 }
 
 func assignIPAddress(ip string) error {
