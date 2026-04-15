@@ -22,11 +22,13 @@ function App() {
   const [editingAcl, setEditingAcl] = useState('')
   const [autoApproveNext, setAutoApproveNext] = useState(true)
 
+  const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.hostname}:8080`;
+
   // Polling mechanism
   const fetchState = async () => {
     try {
       // 1. Check Session
-      const userRes = await fetch('http://localhost:8080/api/auth/me', {credentials: 'include'})
+      const userRes = await fetch(`${API_BASE}/api/auth/me`, {credentials: 'include'})
       if (!userRes.ok) {
         setUser(null)
         setLoading(false)
@@ -37,9 +39,9 @@ function App() {
 
       // 2. Fetch Dashboard Data
       const [nodesRes, aclRes, keysRes] = await Promise.all([
-        fetch('http://localhost:8080/api/nodes', {credentials: 'include'}),
-        fetch('http://localhost:8080/api/acl', {credentials: 'include'}),
-        fetch('http://localhost:8080/api/auth_keys', {credentials: 'include'})
+        fetch(`${API_BASE}/api/nodes`, {credentials: 'include'}),
+        fetch(`${API_BASE}/api/acl`, {credentials: 'include'}),
+        fetch(`${API_BASE}/api/auth_keys`, {credentials: 'include'})
       ])
       
       if (nodesRes.ok) setNodes(await nodesRes.json())
@@ -72,18 +74,18 @@ function App() {
     fetchState() // Refresh right away
   }
 
-  const approveNode = (id: number) => performAction(`http://localhost:8080/api/nodes/${id}/approve`, 'PUT')
-  const approveRoute = (id: number, route: string) => performAction(`http://localhost:8080/api/nodes/${id}/routes`, 'PUT', { approved_routes: route })
-  const generateKey = () => performAction('http://localhost:8080/api/auth_keys', 'POST', { auto_approve: autoApproveNext })
+  const approveNode = (id: number) => performAction(`${API_BASE}/api/nodes/${id}/approve`, 'PUT')
+  const approveRoute = (id: number, route: string) => performAction(`${API_BASE}/api/nodes/${id}/routes`, 'PUT', { approved_routes: route })
+  const generateKey = () => performAction(`${API_BASE}/api/auth_keys`, 'POST', { auto_approve: autoApproveNext })
   const saveAcl = async () => {
     try {
-      await performAction('http://localhost:8080/api/acl', 'PUT', { policy: editingAcl })
+      await performAction(`${API_BASE}/api/acl`, 'PUT', { policy: editingAcl })
       alert("ACL Saved Successfully")
     } catch (err) { alert("Failed to save ACL. Ensure JSON is valid.") }
   }
 
   const loginWithGitHub = () => {
-    window.location.href = "http://localhost:8080/api/auth/github";
+    window.location.href = `${API_BASE}/api/auth/github`;
   }
 
   // --- RENDERERS ---
