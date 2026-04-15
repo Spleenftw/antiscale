@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { LayoutDashboard, Network, Shield, Settings, Server, Check, Key, Github, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Network, Shield, Settings, Server, Check, Key, Github, RefreshCw, Save } from 'lucide-react'
 
 // Interfaces
 interface Node {
