@@ -1,9 +1,7 @@
 
 services:
   controller:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    image: spleenftw/antiscale-controller:latest
     ports:
       - "8080:8080"
     volumes:
@@ -16,9 +14,7 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: spleenftw/antiscale-ui:latest
     ports:
       - "80:80"
     restart: unless-stopped
