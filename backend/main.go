@@ -121,7 +121,7 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:80,http://localhost",
+		AllowOriginsFunc: func(origin string) bool { return true },
 		AllowCredentials: true,
 		AllowHeaders:     "Origin, Content-Type, Accept",
 	}))
@@ -162,7 +162,7 @@ func main() {
 
 func githubLogin(c *fiber.Ctx) error {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
-	redirectURI := "http://localhost:8080/api/auth/github/callback"
+	redirectURI := c.BaseURL() + "/api/auth/github/callback"
 	url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user", clientID, redirectURI)
 	return c.Redirect(url)
 }
@@ -224,7 +224,7 @@ func githubCallback(c *fiber.Ctx) error {
 		Path:     "/",
 	})
 
-	return c.Redirect("http://localhost/")
+	return c.Redirect(c.Protocol() + "://" + c.Hostname() + "/")
 }
 
 func getMe(c *fiber.Ctx) error {
