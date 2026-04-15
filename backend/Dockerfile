@@ -2,9 +2,9 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 COPY go.mod ./
-# Download dependencies - since we use `go get` locally we will allow it to fail gracefully if go.sum is missing or we just init module
-RUN go mod tidy || true
 COPY . .
+# Now that main.go is copied, go mod tidy can accurately map and fetch dependencies
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o controller main.go
 
 FROM alpine:latest
