@@ -199,7 +199,7 @@ function App() {
                         <td>
                           {node.status === 'pending' ? (
                             <button className="btn" onClick={() => approveNode(node.id)}><Check size={16} /> Approve</button>
-                          ) : <button className="btn btn-secondary">Manage</button>}
+                          ) : <button className="btn btn-secondary" onClick={() => alert("Detailed management view coming soon!")}>Manage</button>}
                         </td>
                       </tr>
                     ))}

@@ -285,6 +285,8 @@ func registerNode(c *fiber.Ctx) error {
 		}
 	}
 
+	endpoint := fmt.Sprintf("%s:51820", c.IP())
+
 	result := db.Where("public_key = ?", req.PublicKey).First(&node)
 	if result.Error != nil {
 		var count int64
@@ -296,12 +298,14 @@ func registerNode(c *fiber.Ctx) error {
 			UserID: ownerID, Hostname: req.Hostname, MagicName: magic,
 			PublicKey: req.PublicKey, PrivateIP: newIP,
 			AdvertisedRoutes: req.AdvertisedRoutes, AcceptRoutes: req.AcceptRoutes, Status: status,
+			Endpoint: endpoint,
 		}
 		db.Create(&node)
 	} else {
 		node.AdvertisedRoutes = req.AdvertisedRoutes
 		node.AcceptRoutes = req.AcceptRoutes
 		node.Hostname = req.Hostname
+		node.Endpoint = endpoint
 		if ownerID != 0 { node.UserID = ownerID }
 		if status == "approved" && node.Status == "pending" { node.Status = "approved" }
 		db.Save(&node)

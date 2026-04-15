@@ -12,6 +12,7 @@ type Node struct {
 	MagicName        string    `gorm:"size:255;uniqueIndex" json:"magic_name"`
 	PublicKey        string    `gorm:"size:64;uniqueIndex;not null" json:"public_key"`
 	PrivateIP        string    `gorm:"size:15;uniqueIndex;not null" json:"private_ip"`
+	Endpoint         string    `gorm:"size:255" json:"endpoint"`
 	IsExit           bool      `gorm:"default:false" json:"is_exit"`
 	AdvertisedRoutes string    `gorm:"type:text" json:"advertised_routes"`
 	ApprovedRoutes   string    `gorm:"type:text" json:"approved_routes"`

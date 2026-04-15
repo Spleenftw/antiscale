@@ -21,6 +21,7 @@ type Node struct {
 	Hostname  string `json:"hostname"`
 	PublicKey string `json:"public_key"`
 	PrivateIP string `json:"private_ip"`
+	Endpoint  string `json:"endpoint"`
 	Status    string `json:"status"`
 }
 
@@ -79,9 +80,15 @@ func syncWireGuard(me wgtypes.Key, peers []Node) error {
 		_, ipNet, _ := net.ParseCIDR(p.PrivateIP + "/32")
 		allowedIPs := []net.IPNet{*ipNet}
 
+		var endpoint *net.UDPAddr
+		if p.Endpoint != "" {
+			endpoint, _ = net.ResolveUDPAddr("udp", p.Endpoint)
+		}
+
 		peerConfigs = append(peerConfigs, wgtypes.PeerConfig{
 			PublicKey:         pubKey,
 			AllowedIPs:        allowedIPs,
+			Endpoint:          endpoint,
 			ReplaceAllowedIPs: true,
 		})
 	}
