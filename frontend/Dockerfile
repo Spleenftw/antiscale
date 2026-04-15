@@ -2,10 +2,10 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
-# Run minimal setup logic if we want to build
-RUN npm install || true
+# Require npm install to succeed so we don't cache broken layers
+RUN npm install
 COPY . .
-RUN npm run build || true
+RUN npm run build
 
 # Serve with nginx
 FROM nginx:alpine
