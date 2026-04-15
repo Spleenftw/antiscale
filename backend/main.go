@@ -9,6 +9,7 @@ import (
 	mathrand "math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/antiscale/backend/models"
@@ -224,7 +225,8 @@ func githubCallback(c *fiber.Ctx) error {
 		Path:     "/",
 	})
 
-	return c.Redirect(c.Protocol() + "://" + c.Hostname() + "/")
+	host := strings.Split(c.Hostname(), ":")[0]
+	return c.Redirect(c.Protocol() + "://" + host + "/")
 }
 
 func getMe(c *fiber.Ctx) error {
