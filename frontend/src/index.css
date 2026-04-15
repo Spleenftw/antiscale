@@ -338,12 +338,22 @@ tr:hover td {
   border-radius: 50%;
 }
 
-.status-approved {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--status-online);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+.status-approved { background: rgba(16, 185, 129, 0.15); color: var(--status-online); border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-blocked { background: rgba(239, 68, 68, 0.15); color: var(--status-offline); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+.menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-.status-approved::before { background: var(--status-online); box-shadow: 0 0 8px var(--status-online); }
+.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
 
 .status-pending {
   background: rgba(245, 158, 11, 0.1);

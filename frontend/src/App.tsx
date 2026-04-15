@@ -21,6 +21,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [editingAcl, setEditingAcl] = useState('')
   const [autoApproveNext, setAutoApproveNext] = useState(true)
+  const [manageMenuOpen, setManageMenuOpen] = useState<number | null>(null)
 
   const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.hostname}:8080`;
 
@@ -76,6 +77,11 @@ function App() {
 
   const approveNode = (id: number) => performAction(`${API_BASE}/api/nodes/${id}/approve`, 'PUT')
   const deleteNode = (id: number) => performAction(`${API_BASE}/api/nodes/${id}`, 'DELETE')
+  const confirmDeleteNode = (id: number) => {
+    if (window.confirm("Are you sure you want to remove this machine from the network?")) {
+      deleteNode(id);
+    }
+  }
   const approveRoute = (id: number, route: string) => performAction(`${API_BASE}/api/nodes/${id}/routes`, 'PUT', { approved_routes: route })
   const generateKey = () => performAction(`${API_BASE}/api/auth_keys`, 'POST', { auto_approve: autoApproveNext })
   const saveAcl = async () => {
@@ -197,11 +203,33 @@ function App() {
                            </span>
                         </td>
                         <td><span className={`status-badge status-${node.status}`}>{node.status}</span></td>
-                        <td>
+                        <td style={{position: 'relative'}}>
                           {node.status === 'pending' ? (
                             <button className="btn" onClick={() => approveNode(node.id)}><Check size={16} /> Approve</button>
-                          ) : <button className="btn btn-secondary" onClick={() => alert("Detailed management view coming soon!")}>Manage</button>}
-                          <button className="btn btn-secondary" style={{marginLeft: '8px', color: '#ef4444', borderColor: '#ef444433'}} onClick={() => deleteNode(node.id)}>Delete</button>
+                          ) : (
+                            <button className="btn btn-secondary" onClick={() => setManageMenuOpen(manageMenuOpen === node.id ? null : node.id)}>
+                              Manage
+                            </button>
+                          )}
+                          <button className="btn btn-secondary" style={{marginLeft: '8px', color: '#ef4444', borderColor: '#ef444433'}} onClick={() => confirmDeleteNode(node.id)}>Delete</button>
+                          
+                          {manageMenuOpen === node.id && (
+                            <div style={{
+                              position: 'absolute', top: '100%', right: '10px', marginTop: '4px', zIndex: 10,
+                              background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', 
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.5)', width: '200px', display: 'flex', flexDirection: 'column', padding: '0.5rem 0'
+                            }}>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit machine name…</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit machine IPv4…</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Share…</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Disable key expiry</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>View recent activity</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit route settings…</button>
+                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit ACL tags…</button>
+                              <div style={{height: '1px', background: 'var(--border-color)', margin: '4px 0'}}></div>
+                              <button className="menu-btn" style={{color: '#ef4444'}} onClick={() => { confirmDeleteNode(node.id); setManageMenuOpen(null); }}>Remove…</button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
