@@ -95,12 +95,12 @@ function App() {
   if (!user) {
     return (
       <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)'}}>
-        <div style={{background: 'var(--bg-panel)', padding: '3rem', borderRadius: '16px', border: '1px solid var(--border-color)', textAlign: 'center', minWidth: '400px'}}>
-          <div className="logo-icon" style={{margin: '0 auto 1.5rem', width: '48px', height: '48px'}}></div>
-          <h2 style={{marginBottom: '0.5rem'}}>Welcome to Antiscale</h2>
-          <p style={{color: 'var(--text-secondary)', marginBottom: '2.5rem', fontSize: '0.9rem'}}>Authenticate to manage your personalized zero-trust mesh.</p>
-          <button className="btn" onClick={loginWithGitHub} style={{width: '100%', justifyContent: 'center', padding: '12px', fontSize: '1rem', background: '#333'}}>
-            <Github size={20} /> Continue with GitHub
+        <div style={{background: 'var(--bg-card)', padding: '4rem 3rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', textAlign: 'center', minWidth: '420px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', animation: 'fadeIn 0.8s ease'}}>
+          <div className="logo-icon" style={{margin: '0 auto 2rem', width: '56px', height: '56px'}}></div>
+          <h2 style={{marginBottom: '0.75rem', fontSize: '1.8rem'}}>Welcome to Antiscale</h2>
+          <p style={{color: 'var(--text-secondary)', marginBottom: '3rem', fontSize: '0.95rem'}}>Authenticate to manage your personalized zero-trust mesh.</p>
+          <button className="btn" onClick={loginWithGitHub} style={{width: '100%', justifyContent: 'center', padding: '14px', fontSize: '1rem', background: 'linear-gradient(135deg, #1f2937, #111827)'}}>
+            <Github size={22} style={{marginRight: '8px'}} /> Continue with GitHub
           </button>
         </div>
       </div>
@@ -260,7 +260,7 @@ function App() {
             </div>
             <div className="panel" style={{display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)'}}>
               <textarea 
-                style={{flex: 1, padding: '1.5rem', background: '#0a0c10', color: '#e2e8f0', border: 'none', resize: 'none', fontFamily: 'monospace', fontSize: '14px', outline: 'none'}}
+                style={{flex: 1, padding: '2rem', background: 'rgba(0,0,0,0.15)', color: 'var(--text-primary)', border: 'none', resize: 'none', fontFamily: 'SFMono-Regular, Consolas, monospace', fontSize: '14px', outline: 'none', lineHeight: '1.6'}}
                 value={editingAcl} onChange={(e) => setEditingAcl(e.target.value)}
               />
             </div>

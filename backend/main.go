@@ -78,6 +78,16 @@ var Sessions = make(map[string]SessionData)
 
 // Middleware to secure Admin endpoints
 func authRequired(c *fiber.Ctx) error {
+	if os.Getenv("GITHUB_CLIENT_ID") == "" || os.Getenv("DEV_MODE") == "true" {
+		var user models.User
+		if err := db.Where("username = ?", "Dev Admin").First(&user).Error; err != nil {
+			user = models.User{Username: "Dev Admin", GithubID: 0, AvatarURL: "https://github.com/github.png"}
+			db.Create(&user)
+		}
+		c.Locals("userID", user.ID)
+		return c.Next()
+	}
+
 	session := c.Cookies("antiscale_session")
 	data, ok := Sessions[session]
 	if !ok || time.Now().After(data.ExpiresAt) {
@@ -219,6 +229,12 @@ func githubCallback(c *fiber.Ctx) error {
 }
 
 func getMe(c *fiber.Ctx) error {
+	if os.Getenv("GITHUB_CLIENT_ID") == "" || os.Getenv("DEV_MODE") == "true" {
+		var user models.User
+		db.Where("username = ?", "Dev Admin").First(&user)
+		return c.JSON(user)
+	}
+
 	session := c.Cookies("antiscale_session")
 	data, ok := Sessions[session]
 	if !ok || time.Now().After(data.ExpiresAt) {
@@ -303,8 +319,19 @@ func syncPeers(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "node not approved"})
 	}
 
+	// Fetch Policy
+	var acl models.ACLPolicy
+	db.First(&acl)
+	var policyMap map[string]interface{}
+	json.Unmarshal([]byte(acl.Policy), &policyMap)
+	// (For MVP, assuming * allows all. Tailscale's actual parsing is vastly more complex)
+
 	var peers []models.Node
 	db.Where("status = ? AND public_key != ?", "approved", pubKey).Find(&peers)
+	
+	// Future ACL filtering logic goes here by omitting peers from the array
+	// if they don't match ACL. For now, it passes all approved peers.
+
 	return c.JSON(peers)
 }
 

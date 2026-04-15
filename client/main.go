@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/vishvananda/netlink"
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type Node struct {
@@ -19,51 +24,117 @@ type Node struct {
 	Status    string `json:"status"`
 }
 
+func getOrGenerateKey() (wgtypes.Key, error) {
+	keyPath := "/app/data/private.key"
+	keyStr, err := os.ReadFile(keyPath)
+	if err == nil && len(keyStr) > 0 {
+		return wgtypes.ParseKey(string(keyStr))
+	}
+	newKey, err := wgtypes.GeneratePrivateKey()
+	if err != nil {
+		return wgtypes.Key{}, err
+	}
+	os.MkdirAll("/app/data", 0755)
+	os.WriteFile(keyPath, []byte(newKey.String()), 0600)
+	return newKey, nil
+}
+
+func setupWireGuardInterface() error {
+	link, err := netlink.LinkByName("wg0")
+	if err != nil {
+		wgLink := &netlink.GenericLink{LinkAttrs: netlink.LinkAttrs{Name: "wg0"}, LinkType: "wireguard"}
+		if err := netlink.LinkAdd(wgLink); err != nil {
+			return fmt.Errorf("failed to add wg0 interface: %w", err)
+		}
+		link = wgLink
+	}
+	return netlink.LinkSetUp(link)
+}
+
+func assignIPAddress(ip string) error {
+	link, _ := netlink.LinkByName("wg0")
+	addr, err := netlink.ParseAddr(ip + "/24") // Simplified mesh subnet
+	if err != nil {
+		return err
+	}
+	// Try to replace, ignore if exists
+	netlink.AddrReplace(link, addr)
+	return nil
+}
+
+func syncWireGuard(me wgtypes.Key, peers []Node) error {
+	client, err := wgctrl.New()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	var peerConfigs []wgtypes.PeerConfig
+	for _, p := range peers {
+		pubKey, err := wgtypes.ParseKey(p.PublicKey)
+		if err != nil {
+			continue // Skip invalid keys
+		}
+
+		_, ipNet, _ := net.ParseCIDR(p.PrivateIP + "/32")
+		allowedIPs := []net.IPNet{*ipNet}
+
+		peerConfigs = append(peerConfigs, wgtypes.PeerConfig{
+			PublicKey:         pubKey,
+			AllowedIPs:        allowedIPs,
+			ReplaceAllowedIPs: true,
+		})
+	}
+
+	listenPort := 51820
+	conf := wgtypes.Config{
+		PrivateKey:   &me,
+		ListenPort:   &listenPort,
+		ReplacePeers: true,
+		Peers:        peerConfigs,
+	}
+
+	return client.ConfigureDevice("wg0", conf)
+}
+
 func main() {
 	controllerURL := os.Getenv("CONTROLLER_URL")
 	if controllerURL == "" && len(os.Args) >= 2 {
 		controllerURL = os.Args[1]
 	}
 	if controllerURL == "" {
-		log.Fatalf("Missing CONTROLLER_URL environment variable or argument.\nExample: CONTROLLER_URL=http://localhost:8080 %s", os.Args[0])
+		log.Fatalf("Missing CONTROLLER_URL environment variable.")
 	}
 
 	hostname := os.Getenv("NODE_NAME")
 	if hostname == "" {
 		hostname, _ = os.Hostname()
 	}
-	
-	// Mock wireguard key generation for MVP
-	// In production, this would use wgctrl or exec "wg genkey"
-	mockPublicKey := os.Getenv("NODE_KEY")
-	if mockPublicKey == "" {
-		mockPublicKey = fmt.Sprintf("PubKey_%s_%d", hostname, time.Now().Unix())
+
+	privKey, err := getOrGenerateKey()
+	if err != nil {
+		log.Fatalf("Failed to manipulate WireGuard keys: %v", err)
 	}
+	publicKey := privKey.PublicKey().String()
 
 	advertiseRoutes := os.Getenv("ADVERTISE_ROUTES")
-	
-	// New Advanced Flags mimicking tailscale commands
 	authKey := os.Getenv("AUTH_KEY")
 	acceptRoutesStr := os.Getenv("ACCEPT_ROUTES")
 	acceptRoutes := acceptRoutesStr == "true" || acceptRoutesStr == "1"
-	
+
 	fmt.Printf("Starting Antiscale Client on %s\n", hostname)
-	fmt.Printf("Generated Mock Public Key: %s\n", mockPublicKey)
-	if advertiseRoutes != "" {
-		fmt.Printf("Advertising Routes: %s\n", advertiseRoutes)
+	fmt.Printf("Public Key: %s\n", publicKey)
+
+	// Create Kernel wg0 interface initially
+	if err := setupWireGuardInterface(); err != nil {
+		fmt.Printf("Warning: Failed to setup kernel wg0 interface (requires CAP_NET_ADMIN): %v\n", err)
 	}
-	if acceptRoutes {
-		fmt.Printf("Accepting Routes: %v\n", acceptRoutes)
-	}
-	if authKey != "" {
-		fmt.Println("Attempting SSO Pre-Auth with provided Auth Key...")
-	}
-	
+
 	// Register with Controller
 	registerURL := fmt.Sprintf("%s/api/register", controllerURL)
 	payload := map[string]interface{}{
 		"hostname":          hostname,
-		"public_key":        mockPublicKey,
+		"public_key":        publicKey,
 		"advertised_routes": advertiseRoutes,
 		"accept_routes":     acceptRoutes,
 		"auth_key":          authKey,
@@ -79,17 +150,19 @@ func main() {
 	body, _ := io.ReadAll(resp.Body)
 	var myNode Node
 	json.Unmarshal(body, &myNode)
-	
+
 	fmt.Printf("Registered successfully. Assigned IP: %s\nStatus: %s\n", myNode.PrivateIP, myNode.Status)
 
 	if myNode.Status != "approved" {
 		fmt.Println("Waiting for admin approval. Please check the dashboard.")
+	} else if myNode.PrivateIP != "" {
+		assignIPAddress(myNode.PrivateIP)
 	}
 
 	// Polling loop
 	for {
-		time.Sleep(10 * time.Second)
-		syncURL := fmt.Sprintf("%s/api/sync/%s", controllerURL, mockPublicKey)
+		time.Sleep(5 * time.Second)
+		syncURL := fmt.Sprintf("%s/api/sync/%s", controllerURL, publicKey)
 		
 		syncResp, err := http.Get(syncURL)
 		if err != nil {
@@ -104,17 +177,22 @@ func main() {
 		}
 
 		if syncResp.StatusCode == 200 {
+			// Update IP in case we just got approved
+			if myNode.Status == "pending" {
+				myNode.Status = "approved"
+				assignIPAddress(myNode.PrivateIP)
+			}
+
 			var peers []Node
 			syncBody, _ := io.ReadAll(syncResp.Body)
 			json.Unmarshal(syncBody, &peers)
 			
-			fmt.Printf("Synced %d approved peers.\n", len(peers))
-			for _, p := range peers {
-				fmt.Printf(" -> Peer %s (%s) @ %s\n", p.Hostname, p.PrivateIP, p.PublicKey)
+			// Try to sync to the kernel interface using wgctrl
+			if err := syncWireGuard(privKey, peers); err != nil {
+				fmt.Printf("Failed to configure wireguard: %v\n", err)
+			} else {
+				fmt.Printf("Successfully synchronized %d approved peers to wg0.\n", len(peers))
 			}
-			
-			// Here we would sync with WireGuard OS Interface
-			// writeWgConfig(me, peers)
 		}
 		syncResp.Body.Close()
 	}

@@ -2,13 +2,16 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 COPY go.mod ./
-RUN go mod tidy || true
 COPY . .
+RUN go get golang.zx2c4.com/wireguard/wgctrl && \
+    go get golang.zx2c4.com/wireguard/wgctrl/wgtypes && \
+    go get github.com/vishvananda/netlink && \
+    go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o antiscale-client main.go
 
 FROM alpine:latest
 # Install wireguard-tools for the host bindings (for future MVP expansion)
-RUN apk add --no-cache curl wireguard-tools iptables
+RUN apk add --no-cache curl wireguard-tools iptables iproute2
 
 WORKDIR /app
 COPY --from=builder /app/antiscale-client .
