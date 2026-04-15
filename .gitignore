@@ -1,0 +1,16 @@
+# Environment Variables
+.env
+.env.local
+
+# Databases
+*.db
+backend/data/
+
+# Mac / OS Files
+.DS_Store
+
+# Ignore the security review artifact
+security_review.md
+task.md
+implementation_plan.md
+walkthrough.md

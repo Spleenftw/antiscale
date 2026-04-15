@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  controller:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - data_volume:/app/data
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/antiscale.db
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - controller
+
+volumes:
+  data_volume:

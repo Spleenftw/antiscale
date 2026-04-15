@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  antiscale-client:
+    # If building locally:
+    build: 
+      context: ./client
+      dockerfile: Dockerfile
+    # Or if you publish to Dockerhub, you would use:
+    # image: yourusername/antiscale-client:latest
+    
+    container_name: antiscale-client
+    environment:
+      # These can be hardcoded here or loaded from a .env file next to this docker-compose.client.yml
+      - CONTROLLER_URL=${CONTROLLER_URL:-http://<YOUR_VPS_IP>:8080}
+      - NODE_NAME=${NODE_NAME:-my-exit-node}
+      - ADVERTISE_ROUTES=${ADVERTISE_ROUTES:-0.0.0.0/0}
+      - ACCEPT_ROUTES=${ACCEPT_ROUTES:-true}
+      - AUTH_KEY=${AUTH_KEY:-""}
+    
+    # Required for WireGuard interface manipulation:
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    network_mode: "host"
+    restart: unless-stopped
+    volumes:
+      # Maps host dev tun to allow wireguard logic inside the container
+      - /dev/net/tun:/dev/net/tun
+      - /lib/modules:/lib/modules
