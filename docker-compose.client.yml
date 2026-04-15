@@ -1,12 +1,7 @@
 
 services:
   antiscale-client:
-    # If building locally:
-    build: 
-      context: ./client
-      dockerfile: Dockerfile
-    # Or if you publish to Dockerhub, you would use:
-    # image: yourusername/antiscale-client:latest
+    image: spleenftw/antiscale-client:latest
     
     container_name: antiscale-client
     environment:
