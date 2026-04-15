@@ -13,26 +13,53 @@ The Controller should be deployed on a central VPS with a public IP. It requires
 
 ### Prerequisite: GitHub OAuth App
 1. Go to **GitHub Settings -> Developer Settings -> OAuth Apps -> New OAuth App**.
-2. Set the **Homepage URL** to your server's URL (e.g., `http://my-vps-ip:8080`).
+2. Set the **Homepage URL** to your server's URL (e.g., `http://my-vps-ip`).
 3. Set the **Authorization callback URL** to `http://my-vps-ip:8080/api/auth/github/callback`.
 4. Copy the generated `Client ID` and `Client Secret`.
 
 ### Server Deployment
 
-Create a `.env` file in the root directory (next to `docker-compose.yml`) and insert your GitHub credentials:
+Use the following `docker-compose.yml` to deploy the controller using the pre-built DockerHub images:
 
+```yaml
+services:
+  controller:
+    image: spleenftw/antiscale-controller:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - data_volume:/app/data
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/antiscale.db
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+
+  frontend:
+    image: spleenftw/antiscale-ui:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - controller
+
+volumes:
+  data_volume:
+```
+
+Create a `.env` file next to it:
 ```env
-# Controller .env configuration
 GITHUB_CLIENT_ID=your_github_client_id_here
 GITHUB_CLIENT_SECRET=your_github_client_secret_here
 ```
 
 Spin up the control server:
 ```bash
-docker-compose up -d --build
+docker compose up -d
 ```
-*   The **Administration Dashboard** is now available on port `80` (e.g. `http://localhost` if developing locally).
-*   The **Mesh API** is now available on port `8080`.
+*   The **Administration Dashboard** is now on port `80`.
+*   The **Mesh API** is now on port `8080`.
 
 ---
 
@@ -40,41 +67,55 @@ docker-compose up -d --build
 
 The Client Agent runs on the devices you want to connect into your mesh. Because it manipulates kernel network interfaces, it must run with elevated permissions.
 
-### Prerequisite: Auth Key
-Log into your new Antiscale Dashboard, navigate to **Pre-Auth Keys**, and generate a key (e.g., `antskey-34fdf3a4`).
+Log into your Dashboard, navigate to **Pre-Auth Keys**, and generate a key (e.g., `antskey-34fdf3a4`).
 
-### Client Deployment
+You can deploy the client using **Docker Run** (Easiest) or **Docker Compose**.
 
-Extract `docker-compose.client.yml` and place it on your edge device. Next to it, create a `.env` file defining the client's routing capabilities:
+### Option A: Docker Run (Easiest)
 
-```env
-# Client .env configuration
-CONTROLLER_URL=http://<YOUR_CONTROLLER_IP>:8080
-NODE_NAME=ubuntu-worker
+Run this single command on your edge device, replacing the variables:
 
-# Authentication
-AUTH_KEY=antskey-34fdf3a4
-
-# Route Advertising (Optional)
-# E.g., to act as a subnet router or default internet exit-node
-ADVERTISE_ROUTES=192.168.1.0/24,0.0.0.0/0
-
-# Route Acceptance (Optional)
-# If true, this node will try to reach other subnets advertised by peers
-ACCEPT_ROUTES=true
+```bash
+sudo docker run -d \
+  --name antiscale-client \
+  --net=host \
+  --cap-add=NET_ADMIN \
+  --cap-add=SYS_MODULE \
+  -v /dev/net/tun:/dev/net/tun \
+  -v /lib/modules:/lib/modules \
+  -e CONTROLLER_URL=http://<YOUR_CONTROLLER_IP>:8080 \
+  -e NODE_NAME=ubuntu-worker \
+  -e AUTH_KEY=antskey-34fdf3a4 \
+  spleenftw/antiscale-client:latest
 ```
 
-Run the container using the client template:
+### Option B: Docker Compose
+
+Create a `docker-compose.client.yml`:
+
+```yaml
+services:
+  antiscale-client:
+    image: spleenftw/antiscale-client:latest
+    container_name: antiscale-client
+    environment:
+      - CONTROLLER_URL=http://<YOUR_CONTROLLER_IP>:8080
+      - NODE_NAME=ubuntu-worker
+      - AUTH_KEY=antskey-34fdf3a4
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    network_mode: "host"
+    restart: unless-stopped
+    volumes:
+      - /dev/net/tun:/dev/net/tun
+      - /lib/modules:/lib/modules
+```
+
+Deploy it:
 ```bash
-docker-compose -f docker-compose.client.yml up -d
+sudo docker compose -f docker-compose.client.yml up -d
 ```
 
 ### What happens next?
-The client immediately contacts the Controller, uses the `AUTH_KEY` to link itself your specific User Identity, calculates a `100.64.0.x` IP and MagicDNS name (e.g. `peony-dahlia`), and appears live in your Dashboard!
-
----
-
-## 🛡️ Network Controls (ACLs)
-
-From the Dashboard, navigate to the **Access Config** tab and modify the HuJSON mesh rules. 
-When clients hit the network sync endpoint, the Controller parses your exact policies and acts as a strict firewall—entirely omitting forbidden peers from the local network map. 
+The client calculates a `100.64.0.x` IP and MagicDNS name (e.g. `peony-dahlia`), installs WireGuard locally, syncs peers, and appears live in your Dashboard!
