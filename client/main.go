@@ -58,7 +58,12 @@ func assignIPAddress(ip string) error {
 	if err != nil {
 		return err
 	}
-	// Try to replace, ignore if exists
+	// Flush existing IPs
+	addrs, _ := netlink.AddrList(link, netlink.FAMILY_V4)
+	for _, a := range addrs {
+		netlink.AddrDel(link, &a)
+	}
+
 	netlink.AddrReplace(link, addr)
 	return nil
 }
