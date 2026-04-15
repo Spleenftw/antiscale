@@ -19,6 +19,7 @@ services:
     network_mode: "host"
     restart: unless-stopped
     volumes:
+      - ./antiscale-data:/app/data
       # Maps host dev tun to allow wireguard logic inside the container
       - /dev/net/tun:/dev/net/tun
       - /lib/modules:/lib/modules

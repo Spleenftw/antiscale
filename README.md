@@ -81,6 +81,7 @@ sudo docker run -d \
   --net=host \
   --cap-add=NET_ADMIN \
   --cap-add=SYS_MODULE \
+  -v ./antiscale-data:/app/data \
   -v /dev/net/tun:/dev/net/tun \
   -v /lib/modules:/lib/modules \
   -e CONTROLLER_URL=http://<YOUR_CONTROLLER_IP>:8080 \
@@ -108,6 +109,7 @@ services:
     network_mode: "host"
     restart: unless-stopped
     volumes:
+      - ./antiscale-data:/app/data
       - /dev/net/tun:/dev/net/tun
       - /lib/modules:/lib/modules
 ```
