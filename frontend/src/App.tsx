@@ -22,6 +22,9 @@ function App() {
   const [editingAcl, setEditingAcl] = useState('')
   const [autoApproveNext, setAutoApproveNext] = useState(true)
   const [manageMenuOpen, setManageMenuOpen] = useState<number | null>(null)
+  
+  const [routeModalNode, setRouteModalNode] = useState<Node | null>(null)
+  const [routeDraft, setRouteDraft] = useState<string[]>([])
 
   const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.hostname}:8080`;
 
@@ -83,6 +86,18 @@ function App() {
     }
   }
   const approveRoute = (id: number, route: string) => performAction(`${API_BASE}/api/nodes/${id}/routes`, 'PUT', { approved_routes: route })
+  const openRouteModal = (node: Node) => {
+    setRouteModalNode(node)
+    setRouteDraft(node.approved_routes ? node.approved_routes.split(',') : [])
+    setManageMenuOpen(null)
+  }
+  const saveRouteDraft = () => {
+    if (routeModalNode) {
+      approveRoute(routeModalNode.id, routeDraft.join(','))
+      setRouteModalNode(null)
+    }
+  }
+  
   const generateKey = () => performAction(`${API_BASE}/api/auth_keys`, 'POST', { auto_approve: autoApproveNext })
   const saveAcl = async () => {
     try {
@@ -118,6 +133,49 @@ function App() {
 
   return (
     <div className="dashboard-container">
+      
+      {/* ROUTE SETTINGS MODAL */}
+      {routeModalNode && (
+        <div className="modal-overlay" onClick={() => setRouteModalNode(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2 style={{marginBottom: '1.5rem', fontSize: '1.3rem'}}>Edit Route Settings</h2>
+            <p style={{color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem'}}>Allow <strong>{routeModalNode.magic_name || routeModalNode.hostname}</strong> to expose subnets to the rest of your mesh.</p>
+            
+            <div style={{background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '1.5rem'}}>
+              {!routeModalNode.advertised_routes ? (
+                <div style={{color: 'var(--text-secondary)', fontSize: '0.9rem'}}>This machine does not advertise any routes.</div>
+              ) : (
+                routeModalNode.advertised_routes.split(',').map((route, i) => {
+                  const isExit = route.trim() === '0.0.0.0/0' || route.trim() === '::/0';
+                  const isChecked = routeDraft.includes(route.trim());
+                  return (
+                    <label key={i} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < routeModalNode.advertised_routes.split(',').length - 1 ? '1px solid var(--border-color)' : 'none', cursor: 'pointer'}}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked} 
+                        onChange={(e) => {
+                          if (e.target.checked) setRouteDraft([...routeDraft, route.trim()]);
+                          else setRouteDraft(routeDraft.filter(r => r !== route.trim()));
+                        }} 
+                      />
+                      <div>
+                        {isExit ? <div style={{fontWeight: 'bold', color: '#818cf8'}}>Exit Node (Internet Traffic)</div> : <div style={{fontWeight: 'bold'}}>{route.trim()}</div>}
+                        <div style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>{isExit ? "Use this device as the default gateway." : "Subnet router."}</div>
+                      </div>
+                    </label>
+                  )
+                })
+              )}
+            </div>
+
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
+              <button className="btn btn-secondary" onClick={() => setRouteModalNode(null)}>Cancel</button>
+              <button className="btn" onClick={saveRouteDraft}>Save Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="logo-area">
@@ -224,7 +282,7 @@ function App() {
                               <button className="menu-btn" onClick={() => alert("Coming soon")}>Share…</button>
                               <button className="menu-btn" onClick={() => alert("Coming soon")}>Disable key expiry</button>
                               <button className="menu-btn" onClick={() => alert("Coming soon")}>View recent activity</button>
-                              <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit route settings…</button>
+                              <button className="menu-btn" onClick={() => openRouteModal(node)}>Edit route settings…</button>
                               <button className="menu-btn" onClick={() => alert("Coming soon")}>Edit ACL tags…</button>
                               <div style={{height: '1px', background: 'var(--border-color)', margin: '4px 0'}}></div>
                               <button className="menu-btn" style={{color: '#ef4444'}} onClick={() => { confirmDeleteNode(node.id); setManageMenuOpen(null); }}>Remove…</button>

@@ -341,6 +341,18 @@ tr:hover td {
 .status-approved { background: rgba(16, 185, 129, 0.15); color: var(--status-online); border: 1px solid rgba(16, 185, 129, 0.3); }
 .status-blocked { background: rgba(239, 68, 68, 0.15); color: var(--status-offline); border: 1px solid rgba(239, 68, 68, 0.3); }
 
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; animation: fadeIn 0.3s ease;
+}
+.modal-content {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); padding: 2rem; width: 450px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+}
+
 .menu-btn {
   background: transparent;
   border: none;
