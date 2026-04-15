@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/vishvananda/netlink"
@@ -19,10 +21,11 @@ import (
 type Node struct {
 	ID        uint   `json:"id"`
 	Hostname  string `json:"hostname"`
-	PublicKey string `json:"public_key"`
-	PrivateIP string `json:"private_ip"`
-	Endpoint  string `json:"endpoint"`
-	Status    string `json:"status"`
+	PublicKey      string `json:"public_key"`
+	PrivateIP      string `json:"private_ip"`
+	Endpoint       string `json:"endpoint"`
+	Status         string `json:"status"`
+	ApprovedRoutes string `json:"approved_routes"`
 }
 
 func getOrGenerateKey() (wgtypes.Key, error) {
@@ -68,12 +71,14 @@ func assignIPAddress(ip string) error {
 	return nil
 }
 
-func syncWireGuard(me wgtypes.Key, peers []Node) error {
+func syncWireGuard(me wgtypes.Key, peers []Node, acceptRoutes bool) error {
 	client, err := wgctrl.New()
 	if err != nil {
 		return err
 	}
 	defer client.Close()
+
+	wgLink, _ := netlink.LinkByName("wg0")
 
 	var peerConfigs []wgtypes.PeerConfig
 	for _, p := range peers {
@@ -84,6 +89,26 @@ func syncWireGuard(me wgtypes.Key, peers []Node) error {
 
 		_, ipNet, _ := net.ParseCIDR(p.PrivateIP + "/32")
 		allowedIPs := []net.IPNet{*ipNet}
+
+		if acceptRoutes && p.ApprovedRoutes != "" {
+			routes := strings.Split(p.ApprovedRoutes, ",")
+			for _, r := range routes {
+				routeStr := strings.TrimSpace(r)
+				if routeStr == "" { continue }
+				_, rCIDR, err := net.ParseCIDR(routeStr)
+				if err == nil {
+					allowedIPs = append(allowedIPs, *rCIDR)
+					if wgLink != nil {
+						route := &netlink.Route{
+							LinkIndex: wgLink.Attrs().Index,
+							Dst:       rCIDR,
+							Scope:     netlink.SCOPE_LINK,
+						}
+						netlink.RouteReplace(route)
+					}
+				}
+			}
+		}
 
 		var endpoint *net.UDPAddr
 		if p.Endpoint != "" {
@@ -136,6 +161,12 @@ func main() {
 
 	fmt.Printf("Starting Antiscale Client on %s\n", hostname)
 	fmt.Printf("Public Key: %s\n", publicKey)
+
+	if advertiseRoutes != "" {
+		fmt.Println("Enabling iptables MASQUERADE for outbound subnet routing...")
+		exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run()
+		exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", "100.64.0.0/24", "-j", "MASQUERADE").Run()
+	}
 
 	// Create Kernel wg0 interface initially
 	if err := setupWireGuardInterface(); err != nil {
@@ -200,7 +231,7 @@ func main() {
 			json.Unmarshal(syncBody, &peers)
 			
 			// Try to sync to the kernel interface using wgctrl
-			if err := syncWireGuard(privKey, peers); err != nil {
+			if err := syncWireGuard(privKey, peers, acceptRoutes); err != nil {
 				fmt.Printf("Failed to configure wireguard: %v\n", err)
 			} else {
 				fmt.Printf("Successfully synchronized %d approved peers to wg0.\n", len(peers))
