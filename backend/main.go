@@ -143,6 +143,7 @@ func main() {
 	admin := api.Group("/", authRequired)
 	admin.Get("/nodes", getNodes)
 	admin.Put("/nodes/:id/approve", approveNode)
+	admin.Delete("/nodes/:id", deleteNode)
 	admin.Put("/nodes/:id/routes", updateNodeRoutes)
 	admin.Get("/acl", getACL)
 	admin.Put("/acl", updateACL)
@@ -356,6 +357,11 @@ func approveNode(c *fiber.Ctx) error {
 	node.Status = "approved"
 	db.Save(&node)
 	return c.JSON(node)
+}
+
+func deleteNode(c *fiber.Ctx) error {
+	if err := db.Delete(&models.Node{}, c.Params("id")).Error; err != nil { return c.Status(500).JSON(fiber.Map{"error": "delete failed"}) }
+	return c.SendStatus(204)
 }
 
 func updateNodeRoutes(c *fiber.Ctx) error {

@@ -75,6 +75,7 @@ function App() {
   }
 
   const approveNode = (id: number) => performAction(`${API_BASE}/api/nodes/${id}/approve`, 'PUT')
+  const deleteNode = (id: number) => performAction(`${API_BASE}/api/nodes/${id}`, 'DELETE')
   const approveRoute = (id: number, route: string) => performAction(`${API_BASE}/api/nodes/${id}/routes`, 'PUT', { approved_routes: route })
   const generateKey = () => performAction(`${API_BASE}/api/auth_keys`, 'POST', { auto_approve: autoApproveNext })
   const saveAcl = async () => {
@@ -200,6 +201,7 @@ function App() {
                           {node.status === 'pending' ? (
                             <button className="btn" onClick={() => approveNode(node.id)}><Check size={16} /> Approve</button>
                           ) : <button className="btn btn-secondary" onClick={() => alert("Detailed management view coming soon!")}>Manage</button>}
+                          <button className="btn btn-secondary" style={{marginLeft: '8px', color: '#ef4444', borderColor: '#ef444433'}} onClick={() => deleteNode(node.id)}>Delete</button>
                         </td>
                       </tr>
                     ))}
